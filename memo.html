@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Memory Game - Все продукты</title>
+    <style>
+        :root {
+            --primary: #ffcc00;
+            --secondary: #ff6600;
+            --bg-dark: #1a1a1a;
+            --card-back: #2c3e50;
+            --text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: url('https://i.imgur.com/uMtjuHk.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 20px;
+        }
+
+        .back-to-menu {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 2px solid white;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+            backdrop-filter: blur(5px);
+            font-size: 0.9rem;
+        }
+
+        .game-header {
+            margin-top: 60px;
+            text-align: center;
+            color: white;
+            text-shadow: var(--text-shadow);
+            margin-bottom: 15px;
+        }
+
+        .stats {
+            background: rgba(0,0,0,0.6);
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 1rem;
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Адаптивная сетка для 28 карточек */
+        .memory-grid {
+            display: grid;
+            /* По умолчанию для мобилок: 4 колонки */
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 95%;
+            max-width: 900px;
+            perspective: 1000px;
+        }
+
+        /* Для планшетов и ПК: 7 колонок (7x4 = 28) */
+        @media (min-width: 768px) {
+            .memory-grid {
+                grid-template-columns: repeat(7, 1fr);
+            }
+        }
+
+        .card {
+            aspect-ratio: 1 / 1;
+            position: relative;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card.flipped, .card.matched {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            cursor: default;
+        }
+
+        .card-face {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            border: 2px solid white;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+        }
+
+        .card-front {
+            background: #fff;
+            transform: rotateY(180deg);
+        }
+
+        .card.matched .card-front {
+            border-color: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+            background: #f9fff9;
+        }
+
+        .card-front img {
+            width: 85%;
+            height: 85%;
+            object-fit: contain;
+        }
+
+        .card-back {
+            background: var(--card-back);
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,0.03) 8px, rgba(255,255,255,0.03) 16px);
+            font-size: 1.5rem;
+            color: white;
+            font-weight: bold;
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 20px;
+        }
+
+        .btn {
+            padding: 12px 35px;
+            font-size: 1.2rem;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 0 #993d00;
+            margin-top: 15px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:active { transform: translateY(2px); box-shadow: 0 3px 0 #993d00; }
+
+        @media (max-width: 480px) {
+            .memory-grid { gap: 6px; }
+            .card-back { font-size: 1.2rem; }
+            .card-face { border-width: 1.5px; }
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <a href="index.html" class="back-to-menu">⬅ МЕНЮ</a>
+
+    <div class="game-header">
+        <h1>Memory Food</h1>
+        <div class="stats">
+            <span>Ходы: <b id="moves">0</b></span>
+            <span>Пары: <b id="pairs">0/14</b></span>
+        </div>
+    </div>
+
+    <div class="memory-grid" id="grid"></div>
+
+    <div id="win-screen" class="overlay hidden">
+        <h1 style="font-size: 3rem; color: var(--primary); margin-bottom: 10px;">ВЕЛИКОЛЕПНО!</h1>
+        <p id="final-stats" style="font-size: 1.2rem; margin-bottom: 20px;"></p>
+        <div style="display: flex; flex-direction: column; gap: 10px; width: 200px;">
+            <button class="btn" onclick="initGame()">ИГРАТЬ СНОВА</button>
+            <a href="index.html" class="btn" style="background: #444; box-shadow: 0 5px 0 #222; text-align: center;">В МЕНЮ</a>
+        </div>
+    </div>
+
+    <script>
+        const grid = document.getElementById('grid');
+        const movesEl = document.getElementById('moves');
+        const pairsEl = document.getElementById('pairs');
+        const winScreen = document.getElementById('win-screen');
+        const finalStats = document.getElementById('final-stats');
+
+        // Полный список всех 14 продуктов
+        const foodData = [
+            { id: 'soup', url: 'https://i.imgur.com/sTlRdkz.png' },
+            { id: 'sausage', url: 'https://i.imgur.com/tvd8d34.png' },
+            { id: 'sandwich', url: 'https://i.imgur.com/8aNmYAy.png' },
+            { id: 'salad', url: 'https://i.imgur.com/ag6fIye.png' },
+            { id: 'pizza', url: 'https://i.imgur.com/dATKGRF.png' },
+            { id: 'pasta', url: 'https://i.imgur.com/2IiFf4K.png' },
+            { id: 'ketchup', url: 'https://i.imgur.com/Bq4B911.png' },
+            { id: 'ice cream', url: 'https://i.imgur.com/GQdiCRG.png' },
+            { id: 'cupcake', url: 'https://i.imgur.com/qiRlv0l.png' },
+            { id: 'chips', url: 'https://i.imgur.com/nPsqHLQ.png' },
+            { id: 'chicken', url: 'https://i.imgur.com/HssmoYF.png' },
+            { id: 'cheese', url: 'https://i.imgur.com/XWGClsv.png' },
+            { id: 'cereal', url: 'https://i.imgur.com/XZkEBjt.png' },
+            { id: 'burger', url: 'https://i.imgur.com/lYmXwKM.png' }
+        ];
+
+        let flippedCards = [];
+        let moves = 0;
+        let matchedPairs = 0;
+        let lockBoard = false;
+        let isSpeaking = false;
+
+        function speak(text) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'en-US';
+            msg.rate = 0.9;
+            isSpeaking = true;
+            msg.onend = () => { isSpeaking = false; };
+            window.speechSynthesis.speak(msg);
+        }
+
+        function initGame() {
+            grid.innerHTML = '';
+            moves = 0;
+            matchedPairs = 0;
+            flippedCards = [];
+            lockBoard = false;
+            isSpeaking = false;
+            movesEl.innerText = moves;
+            pairsEl.innerText = `0/${foodData.length}`;
+            winScreen.classList.add('hidden');
+
+            // Создаем 28 карточек (14 пар)
+            const gameData = [...foodData, ...foodData]
+                .sort(() => Math.random() - 0.5);
+
+            gameData.forEach((item) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.name = item.id;
+                
+                card.innerHTML = `
+                    <div class="card-face card-back">?</div>
+                    <div class="card-face card-front">
+                        <img src="${item.url}" alt="${item.id}">
+                    </div>
+                `;
+                
+                card.addEventListener('click', () => flipCard(card));
+                grid.appendChild(card);
+            });
+        }
+
+        function flipCard(card) {
+            if (lockBoard || isSpeaking) return; 
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+            card.classList.add('flipped');
+            flippedCards.push(card);
+            speak(card.dataset.name);
+
+            if (flippedCards.length === 2) {
+                moves++;
+                movesEl.innerText = moves;
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            const isMatch = card1.dataset.name === card2.dataset.name;
+
+            if (isMatch) {
+                lockBoard = true;
+                setTimeout(() => {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    matchedPairs++;
+                    pairsEl.innerText = `${matchedPairs}/${foodData.length}`;
+                    resetTurn();
+
+                    if (matchedPairs === foodData.length) {
+                        setTimeout(() => {
+                            finalStats.innerText = `Все слова выучены за ${moves} ходов!`;
+                            winScreen.classList.remove('hidden');
+                        }, 800);
+                    }
+                }, 600);
+            } else {
+                lockBoard = true;
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    resetTurn();
+                }, 1200);
+            }
+        }
+
+        function resetTurn() {
+            flippedCards = [];
+            lockBoard = false;
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
